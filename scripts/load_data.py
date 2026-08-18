@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -92,3 +91,23 @@ topics_df = pd.DataFrame(
 topics_df.to_sql("topic_categories", engine, if_exists="replace", index=False)
 print(f"Loaded {len(topics_df)} topic mappings")
 
+neighborhood_population_overrides = {
+    "Bay Village": "South End",
+    "Leather District": "Chinatown",
+}
+
+population_df = pd.read_csv("data/neighborhood_population.csv")
+population_df = population_df[["name", "population_b01001_001e"]].rename(
+    columns={"name": "neighborhood", "population_b01001_001e": "population"}
+)
+
+# Add rows for the two missing neighborhoods, borrowing population from their mapped parent
+for missing, parent in neighborhood_population_overrides.items():
+    parent_pop = population_df.loc[population_df["neighborhood"] == parent, "population"].values[0]
+    population_df = pd.concat([
+        population_df,
+        pd.DataFrame([{"neighborhood": missing, "population": parent_pop}])
+    ], ignore_index=True)
+
+population_df.to_sql("neighborhood_population", engine, if_exists="replace", index=False)
+print(f"Loaded {len(population_df)} neighborhood population records")

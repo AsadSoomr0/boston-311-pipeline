@@ -4,6 +4,7 @@ const bostonBounds = L.latLngBounds(
   [42.45, -70.85]
 );
 
+const API_BASE = 'http://localhost:8000'
 const map = L.map('map', {
   maxBounds: bostonBounds,
   maxBoundsViscosity: 1.0,
@@ -16,27 +17,42 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
 }).addTo(map);
 
 const DRILLDOWN_ZOOM = 18;
-let neighborhoodCounts = {};
+let neighborhoodData = {};
+let colorBreaks = [0, 0, 0, 0, 0];
 let neighborhoodLayer = null;
 let selectedLayer = null;
 
 // ---- Choropleth color scale ----
-function getColor(count) {
-  return count > 4000 ? '#4a1486' :
-         count > 2500 ? '#6a51a3' :
-         count > 1500 ? '#807dba' :
-         count > 800  ? '#9e9ac8' :
-         count > 300  ? '#bcbddc' :
-         count > 0    ? '#dadaeb' :
-                          '#fcfbfd';
+function getColorBreaks(rates) {
+  const sorted = [...rates].filter(r => r > 0).sort((a, b) => a - b);
+  if (sorted.length === 0) return [0, 0, 0, 0, 0];
+  const quantile = (p) => sorted[Math.floor(p * (sorted.length - 1))];
+  return [
+    quantile(0.2),
+    quantile(0.4),
+    quantile(0.6),
+    quantile(0.8),
+    quantile(0.95),
+  ];
+}
+
+function getColor(rate, breaks) {
+  const [b20, b40, b60, b80, b95] = breaks;
+  if (rate > b95) return '#4a1486';
+  if (rate > b80) return '#6a51a3';
+  if (rate > b60) return '#807dba';
+  if (rate > b40) return '#9e9ac8';
+  if (rate > b20) return '#bcbddc';
+  if (rate > 0) return '#dadaeb';
+  return '#fcfbfd';
 }
 
 function styleFeature(feature) {
-  const count = neighborhoodCounts[feature.properties.name] || 0;
+  const data = neighborhoodData[feature.properties.name] || { count: 0, rate: 0 };
   return {
     color: '#555',
     weight: 1.5,
-    fillColor: getColor(count),
+    fillColor: getColor(data.rate, colorBreaks),
     fillOpacity: 0.6
   };
 }
@@ -62,12 +78,16 @@ function onNeighborhoodClick(e) {
   map.fitBounds(layer.getBounds());
 }
 
-fetch('http://localhost:8000/api/cases/by-neighborhood')
+fetch(`${API_BASE}/api/cases/by-neighborhood`)
   .then(response => response.json())
   .then(data => {
     data.forEach(row => {
-      neighborhoodCounts[row.neighborhood] = row.case_count;
+      neighborhoodData[row.neighborhood] = {
+        count: row.case_count,
+        rate: row.cases_per_1000
+      };
     });
+    colorBreaks = getColorBreaks(Object.values(neighborhoodData).map(d => d.rate));
 
     fetch('boston_neighborhoods.json')
       .then(response => response.json())
@@ -79,8 +99,8 @@ fetch('http://localhost:8000/api/cases/by-neighborhood')
         neighborhoodLayer = L.geoJSON(geoData, {
           style: styleFeature,
           onEachFeature: (feature, layer) => {
-            const count = neighborhoodCounts[feature.properties.name] || 0;
-            layer.bindTooltip(`${feature.properties.name}: ${count} cases`);
+            const data = neighborhoodData[feature.properties.name] || { count: 0, rate: 0 };
+            layer.bindTooltip(`${feature.properties.name}: ${data.count} cases (${data.rate} per 1,000 residents)`);
             layer.on('click', onNeighborhoodClick);
           }
         }).addTo(map);
@@ -104,7 +124,7 @@ function loadCasesInView() {
     max_lng: bounds.getEast(),
   });
 
-  fetch(`http://localhost:8000/api/cases?${params}`)
+  fetch(`${API_BASE}/api/cases?${params}`)
     .then(response => response.json())
     .then(cases => {
       individualPinsLayer.clearLayers();
@@ -135,3 +155,55 @@ function checkZoomAndLoad() {
 
 map.on('zoomend', checkZoomAndLoad);
 map.on('moveend', checkZoomAndLoad);
+
+function getCurrentFilters() {
+  const categories = Array.from(document.querySelectorAll('.category-cb:checked'))
+    .map(cb => cb.value);
+  const status = document.querySelector('input[name="status"]:checked').value;
+  const startDate = document.getElementById('start-date').value;
+  const endDate = document.getElementById('end-date').value;
+
+  const params = new URLSearchParams();
+  categories.forEach(cat => params.append('category', cat));
+  if (status) params.append('status', status);
+  if (startDate) params.append('start_date', startDate);
+  if (endDate) params.append('end_date', endDate);
+
+  return params;
+}
+
+function refreshChoropleth() {
+  const params = getCurrentFilters();
+  fetch(`${API_BASE}/api/cases/by-neighborhood?${params}`)
+    .then(response => response.json())
+    .then(data => {
+      neighborhoodData = {};
+      data.forEach(row => {
+        neighborhoodData[row.neighborhood] = {
+          count: row.case_count,
+          rate: row.cases_per_1000
+        };
+      });
+      colorBreaks = getColorBreaks(Object.values(neighborhoodData).map(d => d.rate));
+
+      if (neighborhoodLayer) {
+        neighborhoodLayer.eachLayer(layer => {
+          const data = neighborhoodData[layer.feature.properties.name] || { count: 0, rate: 0 };
+          layer.setStyle(styleFeature(layer.feature));
+          layer.setTooltipContent(`${layer.feature.properties.name}: ${data.count} cases (${data.rate} per 1,000 residents)`);
+        });
+      }
+    });
+}
+
+function onFilterChange() {
+  refreshChoropleth();
+  if (map.getZoom() >= DRILLDOWN_ZOOM) {
+    loadCasesInView();
+  }
+}
+
+document.querySelectorAll('.category-cb').forEach(cb => cb.addEventListener('change', onFilterChange));
+document.querySelectorAll('input[name="status"]').forEach(r => r.addEventListener('change', onFilterChange));
+document.getElementById('start-date').addEventListener('change', onFilterChange);
+document.getElementById('end-date').addEventListener('change', onFilterChange);
