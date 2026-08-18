@@ -208,7 +208,13 @@ fetch(`${API_BASE}/api/cases/by-neighborhood`)
             layer.on('click', onNeighborhoodClick);
           }
         }).addTo(map);
+
+        document.getElementById('loading-overlay').style.display = 'none';
       });
+  })
+    .catch(() => {
+    document.getElementById('loading-overlay').innerHTML =
+      '<p>Taking longer than usual to wake up the server — thanks for your patience!</p>';
   });
 
 // ---- Viewport-based drill-down ----
