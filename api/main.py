@@ -89,8 +89,6 @@ def get_cases(
 def get_cases_by_neighborhood(
     status: Optional[str] = None,
     category: Optional[list[str]] = Query(None),
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
 ):
     query = """
         SELECT 
@@ -120,14 +118,6 @@ def get_cases_by_neighborhood(
         conditions.append("topic_categories.umbrella_category IN :category")
         params["category"] = category
 
-    if start_date:
-        conditions.append("cases.open_date >= :start_date")
-        params["start_date"] = start_date
-
-    if end_date:
-        conditions.append("cases.open_date <= :end_date")
-        params["end_date"] = end_date
-
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
@@ -139,5 +129,26 @@ def get_cases_by_neighborhood(
 
     with engine.connect() as conn:
         result = conn.execute(stmt, params)
+        rows = [dict(row._mapping) for row in result]
+    return rows
+
+@app.get("/api/response-time/by-category")
+def get_response_time_by_category():
+    query = """
+        SELECT 
+            topic_categories.umbrella_category,
+            COUNT(*) as case_count,
+            ROUND(
+                (PERCENTILE_CONT(0.5) WITHIN GROUP (
+                    ORDER BY EXTRACT(EPOCH FROM (cases.close_date - cases.open_date)) / 3600
+                ) FILTER (WHERE cases.close_date IS NOT NULL))::numeric, 1
+            ) as median_response_hours
+        FROM cases
+        JOIN topic_categories ON cases.case_topic = topic_categories.case_topic
+        GROUP BY topic_categories.umbrella_category
+        ORDER BY median_response_hours DESC
+    """
+    with engine.connect() as conn:
+        result = conn.execute(text(query))
         rows = [dict(row._mapping) for row in result]
     return rows

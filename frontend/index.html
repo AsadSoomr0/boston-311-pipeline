@@ -8,49 +8,86 @@
     #map { height: 100vh; width: 100vw; }
 
     #sidebar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 280px;
-    height: 100vh;
-    background: white;
-    padding: 16px;
-    box-shadow: -2px 0 6px rgba(0,0,0,0.15);
-    overflow-y: auto;
-    z-index: 1000;
-    box-sizing: border-box;
-  }
-  
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 280px;
+      height: 100vh;
+      background: white;
+      padding: 16px;
+      box-shadow: -2px 0 6px rgba(0,0,0,0.15);
+      overflow-y: auto;
+      z-index: 1000;
+      box-sizing: border-box;
+    }
+
+    #tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: #333;
+      color: white;
+    }
+
+    .leaflet-interactive:focus {
+      outline: none;
+    }
+
+    .leaflet-marker-icon, .leaflet-interactive {
+      transition: opacity 0.15s ease-in-out;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
   <div id="sidebar">
-  <div id="filter-panel">
-    <h3>Filters</h3>
-
-    <div id="category-filters">
-      <label><input type="checkbox" value="Animals" class="category-cb"> Animals</label>
-      <label><input type="checkbox" value="Trash & Sanitation" class="category-cb"> Trash & Sanitation</label>
-      <label><input type="checkbox" value="Street Infrastructure" class="category-cb"> Street Infrastructure</label>
-      <label><input type="checkbox" value="Parks & Trees" class="category-cb"> Parks & Trees</label>
-      <label><input type="checkbox" value="Permits & Signage" class="category-cb"> Permits & Signage</label>
-      <label><input type="checkbox" value="Other" class="category-cb"> Other</label>
+    <div id="tabs">
+      <button class="tab-btn active" data-tab="cases-panel">Cases</button>
+      <button class="tab-btn" data-tab="response-time-panel">Response Time</button>
     </div>
 
-    <div id="status-filter">
-      <label><input type="radio" name="status" value="" checked> All</label>
-      <label><input type="radio" name="status" value="open"> Open</label>
-      <label><input type="radio" name="status" value="closed"> Closed</label>
+    <div id="cases-panel" class="tab-panel">
+      <h3>Filters</h3>
+
+      <div id="category-filters">
+        <label><input type="checkbox" value="Animals" class="category-cb"> Animals</label>
+        <label><input type="checkbox" value="Trash & Sanitation" class="category-cb"> Trash & Sanitation</label>
+        <label><input type="checkbox" value="Street Infrastructure" class="category-cb"> Street Infrastructure</label>
+        <label><input type="checkbox" value="Parks & Trees" class="category-cb"> Parks & Trees</label>
+        <label><input type="checkbox" value="Permits & Signage" class="category-cb"> Permits & Signage</label>
+        <label><input type="checkbox" value="Other" class="category-cb"> Other</label>
+      </div>
+
+      <div id="status-filter">
+        <label><input type="radio" name="status" value="" checked> All</label>
+        <label><input type="radio" name="status" value="open"> Open</label>
+        <label><input type="radio" name="status" value="closed"> Closed</label>
+      </div>
     </div>
 
-    <div id="date-filter">
-      <label>Start: <input type="date" id="start-date"></label>
-      <label>End: <input type="date" id="end-date"></label>
+    <div id="response-time-panel" class="tab-panel" style="display: none;">
+      <h3>Median Response Time</h3>
+
+      <div id="rt-category-filters">
+        <label><input type="checkbox" value="Animals" class="rt-category-cb"> Animals</label>
+        <label><input type="checkbox" value="Trash & Sanitation" class="rt-category-cb"> Trash & Sanitation</label>
+        <label><input type="checkbox" value="Street Infrastructure" class="rt-category-cb"> Street Infrastructure</label>
+        <label><input type="checkbox" value="Parks & Trees" class="rt-category-cb"> Parks & Trees</label>
+        <label><input type="checkbox" value="Permits & Signage" class="rt-category-cb"> Permits & Signage</label>
+        <label><input type="checkbox" value="Other" class="rt-category-cb"> Other</label>
+      </div>
     </div>
   </div>
-</div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
