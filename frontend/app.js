@@ -9,7 +9,7 @@ const bostonCoreBounds = L.latLngBounds(
   [42.40, -71.00]
 );
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = 'https://boston-311-pipeline.onrender.com'
 
 const mapRenderer = L.canvas({ padding: 1 });
 
@@ -386,6 +386,19 @@ function onFilterChange() {
 document.querySelectorAll('.category-cb').forEach(cb => cb.addEventListener('change', onFilterChange));
 document.querySelectorAll('.rt-category-cb').forEach(cb => cb.addEventListener('change', onFilterChange));
 document.querySelectorAll('input[name="status"]').forEach(r => r.addEventListener('change', onFilterChange));
+
+document.getElementById('info-btn').addEventListener('click', () => {
+  document.getElementById('info-panel').style.display = 'block';
+  document.getElementById('info-backdrop').style.display = 'block';
+});
+document.getElementById('info-close').addEventListener('click', () => {
+  document.getElementById('info-panel').style.display = 'none';
+  document.getElementById('info-backdrop').style.display = 'none';
+});
+document.getElementById('info-backdrop').addEventListener('click', () => {
+  document.getElementById('info-panel').style.display = 'none';
+  document.getElementById('info-backdrop').style.display = 'none';
+});
 
 // ---- Tab switching ----
 document.querySelectorAll('.tab-btn').forEach(btn => {

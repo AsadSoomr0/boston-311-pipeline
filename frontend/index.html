@@ -32,13 +32,78 @@
       letter-spacing: -0.01em;
       border-bottom: 3px solid #2563eb;
       display: inline-block;
-  }
+    }
     #app-header p {
       margin: 4px 0 0;
       font-size: 16px;
       color: #666;
     }
-    /* ---- Sidebar ---- */
+    #info-btn {
+      position: fixed;
+      top: 45px;
+      left: 380px;
+      z-index: 1000;
+      border: 1px solid #ccc;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(6px);
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      font-size: 22px;
+      font-weight: 700;
+      font-style: italic;
+      font-family: Georgia, serif;
+      cursor: pointer;
+      color: #555;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      transition: background 0.15s ease;
+    }
+    #info-btn:hover {
+      background: #f4f4f4;
+    }
+    #info-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: white;
+      padding: 24px 28px;
+      border-radius: 12px;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+      max-width: 360px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    #info-panel h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+    #info-panel ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+    #info-panel li {
+      margin-bottom: 8px;
+    }
+    #info-close {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      border: none;
+      background: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: #999;
+    }
+
+    #info-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 1900;
+    }
+        /* ---- Sidebar ---- */
     #sidebar {
       position: fixed;
       top: 0;
@@ -175,8 +240,21 @@
   <div id="app-header">
     <h1>Boston 311</h1>
     <p>Service request trends by neighborhood</p>
-  </div>
+   </div>
 
+  <button id="info-btn" aria-label="About this map">i</button>
+
+  <div id="info-panel" style="display: none;">
+    <button id="info-close" aria-label="Close">&times;</button>
+    <h3>About this map</h3>
+    <ul>
+      <li><strong>Zoom in</strong> on any neighborhood to see individual 311 cases reported there in the last 30 days.</li>
+      <li>Click a neighborhood to zoom to it directly.</li>
+      <li>Data covers Boston 311 requests from 2011 to present, and updates automatically once per day.</li>
+      <li>Pins are colored <span style="color:#e74c3c">red</span> for open cases and <span style="color:#2ecc71">green</span> for closed cases.</li>
+    </ul>
+  </div>
+  <div id="info-backdrop" style="display: none;"></div>
   <div id="map"></div>
 
   <div id="legend"></div>
