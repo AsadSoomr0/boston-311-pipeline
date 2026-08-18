@@ -94,14 +94,20 @@ def get_cases_by_neighborhood(
 ):
     query = """
         SELECT 
-            cases.neighborhood, 
+            cases.neighborhood,
             COUNT(*) as case_count,
             neighborhood_population.population,
-            ROUND(COUNT(*)::numeric / neighborhood_population.population::numeric * 1000, 2) as cases_per_1000
+            ROUND((COUNT(*)::numeric / neighborhood_population.population::numeric) * 1000, 2) as cases_per_1000,
+            ROUND(
+                (PERCENTILE_CONT(0.5) WITHIN GROUP (
+                    ORDER BY EXTRACT(EPOCH FROM (cases.close_date - cases.open_date)) / 3600
+                ) FILTER (WHERE cases.close_date IS NOT NULL))::numeric, 1
+            ) as median_response_hours
         FROM cases
         JOIN topic_categories ON cases.case_topic = topic_categories.case_topic
         JOIN neighborhood_population ON cases.neighborhood = neighborhood_population.neighborhood
     """
+    
     conditions = []
     params = {}
 
