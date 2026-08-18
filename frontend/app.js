@@ -4,23 +4,45 @@ const bostonBounds = L.latLngBounds(
   [42.45, -70.85]
 );
 
+const bostonCoreBounds = L.latLngBounds(
+  [42.23, -71.16],
+  [42.40, -71.00]
+);
+
 const API_BASE = 'http://localhost:8000'
 
-const mapRenderer = L.canvas({ padding: 3 });
+const mapRenderer = L.canvas({ padding: 1 });
 
 const map = L.map('map', {
   maxBounds: bostonBounds,
   maxBoundsViscosity: 1.0,
   minZoom: 11.5,
   renderer: mapRenderer
-}).setView([42.300, -70.940], 12.4);
+})
+
+function fitMapToBoston() {
+  const sidebarWidth = 300;
+  map.fitBounds(bostonCoreBounds, {
+    paddingTopLeft: [20, 20],
+    paddingBottomRight: [sidebarWidth + 20, 20],
+  });
+  
+  const size = map.getSize();
+  const aspectRatio = size.x / size.y;
+  if (aspectRatio > 1.6) {
+    map.setZoom(map.getZoom() + .05, { animate: false });
+  }
+
+  map.options.zoomSnap = 0.25;
+}
+
+fitMapToBoston();
+window.addEventListener('resize', fitMapToBoston);
 
 // Base tile layer
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-  keepBuffer: 20,
-  updateWhenZooming: false,
-  updateWhenIdle: false
+  keepBuffer: 2,
 }).addTo(map);
 
 const DRILLDOWN_ZOOM = 16;
@@ -240,25 +262,33 @@ function debounce(fn, delay) {
 
 const debouncedCheckZoomAndLoad = debounce(checkZoomAndLoad, 250);
 
+let wasAboveDrilldownZoom = false;
+
 function checkZoomAndLoad() {
-  if (map.getZoom() >= DRILLDOWN_ZOOM) {
+  const isAboveDrilldownZoom = map.getZoom() >= DRILLDOWN_ZOOM;
+
+  if (isAboveDrilldownZoom) {
     loadCasesInView();
-    if (neighborhoodLayer) {
+    if (!wasAboveDrilldownZoom && neighborhoodLayer) {
       neighborhoodLayer.eachLayer(layer => {
         layer.closeTooltip();
         layer.unbindTooltip();
       });
     }
   } else {
-    individualPinsLayer.clearLayers();
-    if (neighborhoodLayer) {
+    if (wasAboveDrilldownZoom) {
+      individualPinsLayer.clearLayers();
+    }
+    if (wasAboveDrilldownZoom && neighborhoodLayer) {
       neighborhoodLayer.eachLayer(layer => {
         const data = neighborhoodData[layer.feature.properties.name] || { count: 0, rate: 0, medianResponseHours: 0 };
         layer.bindTooltip(tooltipTextFor(layer.feature.properties.name, data));
       });
     }
   }
+
   updateChoroplethOpacity();
+  wasAboveDrilldownZoom = isAboveDrilldownZoom;
 }
 
 map.on('zoomend', debouncedCheckZoomAndLoad);

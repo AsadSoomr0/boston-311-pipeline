@@ -3,47 +3,112 @@
 <head>
   <title>Boston 311 Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', -apple-system, sans-serif;
+      color: #1a1a1a;
+    }
     #map { height: 100vh; width: 100vw; }
 
+    /* ---- Sidebar ---- */
     #sidebar {
       position: fixed;
       top: 0;
       right: 0;
-      width: 280px;
+      width: 300px;
       height: 100vh;
-      background: white;
-      padding: 16px;
-      box-shadow: -2px 0 6px rgba(0,0,0,0.15);
+      background: #fafafa;
+      padding: 20px;
+      box-shadow: -4px 0 16px rgba(0,0,0,0.08);
       overflow-y: auto;
       z-index: 1000;
-      box-sizing: border-box;
     }
 
+    #sidebar h3 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #666;
+      margin: 24px 0 12px;
+    }
+
+    /* ---- Tabs ---- */
     #tabs {
       display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
+      gap: 4px;
+      background: #eee;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 8px;
     }
     .tab-btn {
       flex: 1;
-      padding: 8px;
-      border: 1px solid #ccc;
-      background: #f5f5f5;
+      padding: 8px 10px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
       cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      color: #555;
     }
     .tab-btn.active {
-      background: #333;
+      background: #1a1a1a;
       color: white;
     }
 
+    /* ---- Checkboxes / radios ---- */
+    #category-filters label,
+    #rt-category-filters label,
+    #status-filter label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      padding: 6px 0;
+      cursor: pointer;
+      color: #333;
+    }
+    #category-filters input,
+    #rt-category-filters input,
+    #status-filter input {
+      width: 16px;
+      height: 16px;
+      accent-color: #1a1a1a;
+      cursor: pointer;
+    }
+
+    /* ---- Leaflet overrides ---- */
     .leaflet-interactive:focus {
       outline: none;
     }
-
     .leaflet-marker-icon, .leaflet-interactive {
       transition: opacity 0.15s ease-in-out;
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    .leaflet-popup-content {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 12px 14px;
+    }
+    .leaflet-tooltip {
+      border-radius: 6px;
+      border: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      padding: 6px 10px;
     }
   </style>
 </head>
@@ -57,8 +122,7 @@
     </div>
 
     <div id="cases-panel" class="tab-panel">
-      <h3>Filters</h3>
-
+      <h3>Category</h3>
       <div id="category-filters">
         <label><input type="checkbox" value="Animals" class="category-cb"> Animals</label>
         <label><input type="checkbox" value="Trash & Sanitation" class="category-cb"> Trash & Sanitation</label>
@@ -68,6 +132,7 @@
         <label><input type="checkbox" value="Other" class="category-cb"> Other</label>
       </div>
 
+      <h3>Status</h3>
       <div id="status-filter">
         <label><input type="radio" name="status" value="" checked> All</label>
         <label><input type="radio" name="status" value="open"> Open</label>
@@ -76,8 +141,7 @@
     </div>
 
     <div id="response-time-panel" class="tab-panel" style="display: none;">
-      <h3>Median Response Time</h3>
-
+      <h3>Category</h3>
       <div id="rt-category-filters">
         <label><input type="checkbox" value="Animals" class="rt-category-cb"> Animals</label>
         <label><input type="checkbox" value="Trash & Sanitation" class="rt-category-cb"> Trash & Sanitation</label>
