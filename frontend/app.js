@@ -90,6 +90,44 @@ function tooltipTextFor(name, data) {
   return `${name}: ${data.count} cases (${data.rate} per 1,000 residents)`;
 }
 
+// ---- Legend ----
+function renderLegend() {
+  const legend = document.getElementById('legend');
+  const isRT = activeTab === 'response-time';
+  const breaks = isRT ? responseTimeBreaks : colorBreaks;
+  const colorFn = isRT ? getResponseTimeColor : getColor;
+  const title = isRT ? 'Median response time' : 'Cases per 1,000 residents';
+  const unit = isRT ? 'hrs' : '';
+
+  const labels = [
+    `0 - ${breaks[0].toFixed(1)}`,
+    `${breaks[0].toFixed(1)} - ${breaks[1].toFixed(1)}`,
+    `${breaks[1].toFixed(1)} - ${breaks[2].toFixed(1)}`,
+    `${breaks[2].toFixed(1)} - ${breaks[3].toFixed(1)}`,
+    `${breaks[3].toFixed(1)} - ${breaks[4].toFixed(1)}`,
+    `${breaks[4].toFixed(1)}+`
+  ];
+
+  const midpoints = [
+    breaks[0] * 0.5,
+    breaks[0] + 1,
+    breaks[1] + 1,
+    breaks[2] + 1,
+    breaks[3] + 1,
+    breaks[4] + 1
+  ];
+
+  legend.innerHTML = `
+    <div class="legend-title">${title}</div>
+    ${labels.map((label, i) => `
+      <div class="legend-row">
+        <div class="legend-swatch" style="background:${colorFn(midpoints[i], breaks)}"></div>
+        <span>${label} ${unit}</span>
+      </div>
+    `).join('')}
+  `;
+}
+
 function styleFeature(feature) {
   const data = neighborhoodData[feature.properties.name] || { count: 0, rate: 0, medianResponseHours: 0 };
 
@@ -153,6 +191,7 @@ fetch(`${API_BASE}/api/cases/by-neighborhood`)
     });
     colorBreaks = getColorBreaks(Object.values(neighborhoodData).map(d => d.rate));
     responseTimeBreaks = getColorBreaks(Object.values(neighborhoodData).map(d => d.medianResponseHours || 0));
+    renderLegend();
 
     fetch('boston_neighborhoods.json')
       .then(response => response.json())
@@ -181,11 +220,12 @@ function getMarkerColor(status) {
 
 function createCaseMarker(c) {
   return L.circleMarker([c.latitude, c.longitude], {
-    radius: 6,
+    radius: 9,
     fillColor: getMarkerColor(c.case_status),
-    color: '#333',
-    weight: 1,
-    fillOpacity: 0.9
+    color: '#fff',
+    weight: 2,
+    fillOpacity: 0.95,
+    className: 'case-pin'
   });
 }
 
@@ -324,7 +364,8 @@ function refreshChoropleth() {
       });
       colorBreaks = getColorBreaks(Object.values(neighborhoodData).map(d => d.rate));
       responseTimeBreaks = getColorBreaks(Object.values(neighborhoodData).map(d => d.medianResponseHours || 0));
-
+      renderLegend();
+  
       if (neighborhoodLayer) {
         neighborhoodLayer.eachLayer(layer => {
           const data = neighborhoodData[layer.feature.properties.name] || { count: 0, rate: 0, medianResponseHours: 0 };
@@ -357,6 +398,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
     activeTab = btn.dataset.tab === 'response-time-panel' ? 'response-time' : 'cases';
     refreshChoropleth();
+    renderLegend();
     if (map.getZoom() >= DRILLDOWN_ZOOM) {
       loadCasesInView();
     }
