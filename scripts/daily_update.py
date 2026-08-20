@@ -1,8 +1,10 @@
 import os
+import json
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, text
+from shapely.geometry import shape, Point
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -37,6 +39,30 @@ COLUMN_MAP = {
     "latitude": "latitude",
     "longitude": "longitude",
 }
+
+# Load neighborhood boundaries for resolving mismatched/compound neighborhood names
+with open(os.path.join(os.path.dirname(__file__), "..", "frontend", "boston_neighborhoods.json")) as f:
+    NEIGHBORHOODS_GEO = json.load(f)
+
+VALID_NEIGHBORHOODS = {f["properties"]["name"] for f in NEIGHBORHOODS_GEO["features"]}
+
+
+def resolve_neighborhood(row):
+    if row["neighborhood"] in VALID_NEIGHBORHOODS:
+        return row["neighborhood"]
+    if pd.isna(row["latitude"]) or pd.isna(row["longitude"]):
+        return row["neighborhood"]
+
+    try:
+        point = Point(float(row["longitude"]), float(row["latitude"]))
+    except (ValueError, TypeError):
+        return row["neighborhood"]
+
+    for feature in NEIGHBORHOODS_GEO["features"]:
+        polygon = shape(feature["geometry"])
+        if polygon.contains(point):
+            return feature["properties"]["name"]
+    return row["neighborhood"]
 
 
 def fetch_new_cases(engine):
