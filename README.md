@@ -79,7 +79,6 @@ docker-compose.yml   local Postgres + Airflow
 
 - **Source data in transition**: the city has acknowledged that some 2026 case types were dropped from the legacy export during the migration. Ingesting both feeds covers most of the gap, but counts depend on what the city publishes.
 - **Combined rates**: Bay Village and the Leather District aren't broken out in the population data, so they share a combined rate with the South End and Chinatown.
-- **Basemap**: CARTO's tiles now need an API key. The site uses Esri's keyless light gray basemap unless a CARTO key is set in `frontend/config.js`.
 
 ## Tech stack
 
