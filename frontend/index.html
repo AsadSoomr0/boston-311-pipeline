@@ -233,8 +233,8 @@
     #legend .legend-divider { border-top: 1px solid #e5e5e5; margin: 6px 0; }
 
     /* ---- Leaflet overrides ---- */
-    .leaflet-top.leaflet-left { top: 120px; left: 9px; }
     .leaflet-bottom.leaflet-right { right: var(--sidebar-width); }
+    .leaflet-bottom.leaflet-right .leaflet-control-zoom { margin: 0 16px 8px 0; }
     .leaflet-interactive:focus { outline: none; }
     .leaflet-popup-content-wrapper {
       border-radius: 10px;
@@ -357,6 +357,9 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mutsuyuki/Leaflet.SmoothWheelZoom@master/SmoothWheelZoom.js"></script>
+  <script src="config.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>

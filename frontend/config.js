@@ -1,8 +1,7 @@
-// Basemap settings.
-// CARTO's basemaps now need a (free, non-commercial) API key: https://carto.com/basemaps/apikey/
-// Leave cartoKey empty to use Esri's keyless light gray basemap instead.
-// The key ships to every visitor's browser, so add a restriction for your
-// Netlify domain in the CARTO dashboard.
+// CARTO basemap keys: https://carto.com/basemaps/apikey/
+// Each key is restricted to where it's used, so both are safe to commit.
+const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
 window.MAP_CONFIG = {
-  cartoKey: '',
+  cartoKey: isLocal ? 'cb1_46or_2_e3b58cd205b2da01c3bd5396' : 'cb1_46or_1_39b0d257062c2f810ff7d435',
 };

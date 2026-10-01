@@ -4,8 +4,8 @@ const DRILLDOWN_ZOOM = 16;
 const NEW_CASE_HOURS = 24;
 const MAX_PINS = 3000;
 
-const CASE_COLORS = ['#fcfbfd', '#dadaeb', '#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#4a1486'];
-const RT_COLORS = ['#fcfbfd', '#fef0d9', '#fdcc8a', '#fc8d59', '#e34a33', '#b30000', '#7f0000'];
+const CASE_COLORS = ['#f7f4fb', '#e3dbf3', '#c9b9e6', '#ab94d6', '#8b6fc2', '#6a4ca6', '#4a2c82'];
+const RT_COLORS = ['#fff8ef', '#fde4c4', '#fbc68f', '#f59d62', '#e56b42', '#c23b28', '#8f1d14'];
 const NO_DATA_COLOR = '#e5e5e5';
 const OPEN_COLOR = '#e74c3c';
 const CLOSED_COLOR = '#2ecc71';
@@ -14,18 +14,29 @@ const NEW_COLOR = '#f59e0b';
 const isNarrow = () => window.matchMedia('(max-width: 760px)').matches;
 
 // ---- Map setup ----
-const bostonBounds = L.latLngBounds([42.15, -71.25], [42.45, -70.85]);
+const bostonBounds = L.latLngBounds([42.05, -71.45], [42.55, -70.65]);
 const bostonCoreBounds = L.latLngBounds([42.23, -71.16], [42.40, -71.00]);
 
-const mapRenderer = L.canvas({ padding: 1, tolerance: L.Browser.mobile ? 6 : 0 });
+// A smaller canvas padding means far fewer pixels to redraw on every pan and zoom.
+const mapRenderer = L.canvas({ padding: 0.5, tolerance: L.Browser.mobile ? 6 : 0 });
 
 const map = L.map('map', {
   maxBounds: bostonBounds,
-  maxBoundsViscosity: 1.0,
-  minZoom: isNarrow() ? 10.5 : 11.5,
+  maxBoundsViscosity: 0.7,
+  minZoom: isNarrow() ? 10.5 : 11,
   maxZoom: 18,
+  zoomSnap: 0,
+  zoomDelta: 0.5,
+  scrollWheelZoom: false,     // replaced by the smooth version below
+  smoothWheelZoom: true,
+  smoothSensitivity: 1.5,
+  inertiaDeceleration: 2000,
+  zoomControl: false,
   renderer: mapRenderer,
 });
+
+// Zoom buttons live bottom right so they never collide with the header.
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 function mapPadding() {
   if (isNarrow()) {
@@ -33,13 +44,11 @@ function mapPadding() {
     return { paddingTopLeft: [12, 90], paddingBottomRight: [12, sidebar + 12] };
   }
   const sidebar = document.getElementById('sidebar').offsetWidth;
-  return { paddingTopLeft: [20, 20], paddingBottomRight: [sidebar + 20, 20] };
+  return { paddingTopLeft: [20, 40], paddingBottomRight: [sidebar + 20, 20] };
 }
 
 function fitMapToBoston() {
-  map.options.zoomSnap = 1;
   map.fitBounds(bostonCoreBounds, { ...mapPadding(), animate: false });
-  map.options.zoomSnap = 0.25;
 }
 
 fitMapToBoston();
@@ -58,11 +67,11 @@ window.addEventListener('resize', () => {
 function addBasemap() {
   const cartoKey = (window.MAP_CONFIG || {}).cartoKey;
   if (cartoKey) {
-    L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`, {
+        L.tileLayer(`https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 20,
-      keepBuffer: 2,
+      keepBuffer: 4,
     }).addTo(map);
     return;
   }
@@ -72,7 +81,7 @@ function addBasemap() {
     attribution: 'Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
     maxNativeZoom: 16,
     maxZoom: 18,
-    keepBuffer: 2,
+    keepBuffer: 4,
   }).addTo(map);
 
   // Street and place labels sit just under the neighborhood fill, like the old CARTO tiles.
@@ -83,7 +92,7 @@ function addBasemap() {
     pane: 'labels',
     maxNativeZoom: 16,
     maxZoom: 18,
-    keepBuffer: 2,
+    keepBuffer: 4,
   }).addTo(map);
 }
 
@@ -244,9 +253,9 @@ function styleFeature(feature) {
     : colorFor(v.rate, caseBreaks, CASE_COLORS);
 
   if (name === selectedName) {
-    return { color: '#000', weight: 3, fillColor, fillOpacity: zoomedIn ? 0.15 : 0.4 };
+    return { color: '#1a1a1a', weight: 3, opacity: 1, fillColor, fillOpacity: zoomedIn ? 0.15 : 0.45 };
   }
-  return { color: '#555', weight: 1.5, fillColor, fillOpacity: zoomedIn ? 0.15 : 0.6 };
+  return { color: '#3f3f46', weight: 1, opacity: 0.6, fillColor, fillOpacity: zoomedIn ? 0.15 : 0.7 };
 }
 
 let tooltipsEnabled = true;
@@ -455,12 +464,19 @@ function loadRecentCases() {
 }
 
 // ---- Zoom handling ----
+let lastZoomedIn = null;
 function onViewChange() {
   const zoomedIn = map.getZoom() >= DRILLDOWN_ZOOM;
-  setTooltipsEnabled(!zoomedIn);
-  restyleNeighborhoods();
-  renderPins();
-  renderLegend();
+  const crossed = zoomedIn !== lastZoomedIn;
+  if (crossed) {
+    // Polygon styles and the legend only change when crossing the drill-down zoom.
+    lastZoomedIn = zoomedIn;
+    setTooltipsEnabled(!zoomedIn);
+    restyleNeighborhoods();
+    renderLegend();
+  }
+  // Pins only exist when zoomed in, or for the optional new-case overlay.
+  if (crossed || zoomedIn || highlightNew()) renderPins();
 }
 
 map.on('zoomend moveend', debounce(onViewChange, 150));
@@ -508,6 +524,25 @@ function describeData() {
     `${through ? ` through ${through}` : ''}, updated automatically once per day.`;
 }
 
+// Fade everything outside Boston so the city stands out from the basemap.
+function addOutsideMask(geoData) {
+  const toLatLngs = ring => ring.map(([lng, lat]) => [lat, lng]);
+  const holes = [];
+  geoData.features.forEach(f => {
+    const g = f.geometry;
+    const polygons = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    polygons.forEach(p => holes.push(toLatLngs(p[0])));
+  });
+  const outer = [[41.9, -71.6], [41.9, -70.5], [42.7, -70.5], [42.7, -71.6]];
+  L.polygon([outer, ...holes], {
+    stroke: false,
+    fillColor: '#ffffff',
+    fillOpacity: 0.45,
+    interactive: false,
+    renderer: mapRenderer,
+  }).addTo(map);
+}
+
 // ---- Initial load ----
 Promise.all([
   fetchJSON(`${DATA_DIR}/meta.json`).then(m => {
@@ -526,6 +561,7 @@ Promise.all([
     onFiltersBuilt();
     describeData();
 
+    addOutsideMask(geoData);
     geoData.features = geoData.features.filter(f => f.properties.name !== 'Harbor Islands');
     neighborhoodLayer = L.geoJSON(geoData, {
       style: styleFeature,
