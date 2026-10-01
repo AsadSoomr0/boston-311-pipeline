@@ -1,3 +1,21 @@
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.3
+  environment: &airflow-env
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__WEBSERVER__SECRET_KEY: "a-fixed-dev-secret-key-change-me"
+    _PIP_ADDITIONAL_REQUIREMENTS: "pandas psycopg2-binary sqlalchemy requests shapely python-dotenv"
+    PYTHONPATH: /opt/airflow
+    DATABASE_URL: postgresql://postgres:postgres@postgres:5432/boston311
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./pipeline:/opt/airflow/pipeline
+    - ./frontend:/opt/airflow/frontend
+    - ./logs:/opt/airflow/logs
+  depends_on:
+    - postgres
+    - airflow-postgres
 
 services:
   postgres:
@@ -32,43 +50,16 @@ services:
     command: -c "airflow db init && airflow users create --username admin --password admin --firstname Asad --lastname Soomro --role Admin --email admin@example.com"
 
   airflow-webserver:
-    image: apache/airflow:2.9.3
+    <<: *airflow-common
     container_name: airflow-webserver
-    depends_on:
-      - airflow-postgres
-      - airflow-init
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__WEBSERVER__SECRET_KEY: "a-fixed-dev-secret-key-change-me"
-      _PIP_ADDITIONAL_REQUIREMENTS: "pandas psycopg2-binary sqlalchemy requests"
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./data:/opt/airflow/data
-      - ./logs:/opt/airflow/logs
     ports:
       - "8080:8080"
     command: webserver
 
   airflow-scheduler:
-    image: apache/airflow:2.9.3
+    <<: *airflow-common
     container_name: airflow-scheduler
-    depends_on:
-      - airflow-postgres
-      - airflow-init
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__WEBSERVER__SECRET_KEY: "a-fixed-dev-secret-key-change-me"
-      _PIP_ADDITIONAL_REQUIREMENTS: "pandas psycopg2-binary sqlalchemy requests"
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./data:/opt/airflow/data
-      - ./logs:/opt/airflow/logs
     command: scheduler
-
 
 volumes:
   pgdata:
