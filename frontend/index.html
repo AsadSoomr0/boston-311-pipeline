@@ -1,23 +1,38 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Boston 311 Map</title>
+  <meta name="description" content="Boston 311 service requests by neighborhood, updated daily.">
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
+    :root {
+      --sidebar-width: 300px;
+      --new-case: #f59e0b;
+    }
     body {
       margin: 0;
       font-family: 'Inter', -apple-system, sans-serif;
       color: #1a1a1a;
     }
     #map { height: 100vh; width: 100vw; }
-    #app-header {
+
+    /* ---- Header + info button ---- */
+    #top-left {
       position: fixed;
       top: 20px;
       left: 20px;
       z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    #app-header {
       background: rgba(255,255,255,0.92);
       backdrop-filter: blur(6px);
       padding: 18px 26px;
@@ -38,11 +53,13 @@
       font-size: 16px;
       color: #666;
     }
+    #app-header #data-updated {
+      font-size: 12px;
+      color: #888;
+      margin-top: 6px;
+    }
     #info-btn {
-      position: fixed;
-      top: 45px;
-      left: 380px;
-      z-index: 1000;
+      flex-shrink: 0;
       border: 1px solid #ccc;
       background: rgba(255,255,255,0.92);
       backdrop-filter: blur(6px);
@@ -58,9 +75,8 @@
       box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       transition: background 0.15s ease;
     }
-    #info-btn:hover {
-      background: #f4f4f4;
-    }
+    #info-btn:hover { background: #f4f4f4; }
+
     #info-panel {
       position: fixed;
       top: 50%;
@@ -71,21 +87,13 @@
       padding: 24px 28px;
       border-radius: 12px;
       box-shadow: 0 12px 48px rgba(0,0,0,0.25);
-      max-width: 360px;
+      width: min(380px, calc(100vw - 32px));
       font-size: 13px;
       line-height: 1.6;
     }
-    #info-panel h3 {
-      margin: 0 0 10px;
-      font-size: 15px;
-    }
-    #info-panel ul {
-      margin: 0;
-      padding-left: 18px;
-    }
-    #info-panel li {
-      margin-bottom: 8px;
-    }
+    #info-panel h3 { margin: 0 0 10px; font-size: 15px; }
+    #info-panel ul { margin: 0; padding-left: 18px; }
+    #info-panel li { margin-bottom: 8px; }
     #info-close {
       position: absolute;
       top: 12px;
@@ -96,7 +104,6 @@
       cursor: pointer;
       color: #999;
     }
-
     #info-backdrop {
       position: fixed;
       inset: 0;
@@ -115,12 +122,10 @@
       align-items: center;
       justify-content: center;
       gap: 16px;
+      text-align: center;
+      padding: 0 24px;
     }
-    #loading-overlay p {
-      font-size: 14px;
-      color: #555;
-      margin: 0;
-    }
+    #loading-overlay p { font-size: 14px; color: #555; margin: 0; }
     #loading-spinner {
       width: 40px;
       height: 40px;
@@ -129,15 +134,14 @@
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-        /* ---- Sidebar ---- */
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Sidebar ---- */
     #sidebar {
       position: fixed;
       top: 0;
       right: 0;
-      width: 300px;
+      width: var(--sidebar-width);
       height: 100vh;
       background: #fafafa;
       padding: 20px;
@@ -145,7 +149,6 @@
       overflow-y: auto;
       z-index: 1000;
     }
-
     #sidebar h3 {
       font-size: 13px;
       font-weight: 600;
@@ -177,15 +180,10 @@
       transition: background 0.15s, color 0.15s;
       color: #555;
     }
-    .tab-btn.active {
-      background: #1a1a1a;
-      color: white;
-    }
+    .tab-btn.active { background: #1a1a1a; color: white; }
 
     /* ---- Checkboxes / radios ---- */
-    #category-filters label,
-    #rt-category-filters label,
-    #status-filter label {
+    .filter-group label {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -194,15 +192,28 @@
       cursor: pointer;
       color: #333;
     }
-    #category-filters input,
-    #rt-category-filters input,
-    #status-filter input {
+    .filter-group input {
       width: 16px;
       height: 16px;
       accent-color: #1a1a1a;
       cursor: pointer;
     }
+    .filter-hint {
+      font-size: 12px;
+      color: #888;
+      margin: -6px 0 6px;
+    }
+    .new-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--new-case);
+      border: 1.5px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+    }
 
+    /* ---- Legend ---- */
     #legend {
       position: fixed;
       bottom: 20px;
@@ -215,35 +226,16 @@
       box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       font-size: 12px;
     }
-    #legend .legend-title {
-      font-weight: 600;
-      margin-bottom: 6px;
-      color: #333;
-    }
-    #legend .legend-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin: 2px 0;
-    }
-    #legend .legend-swatch {
-      width: 14px;
-      height: 14px;
-      border-radius: 3px;
-      flex-shrink: 0;
-    }
+    #legend:empty { display: none; }
+    #legend .legend-title { font-weight: 600; margin-bottom: 6px; color: #333; }
+    #legend .legend-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+    #legend .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+    #legend .legend-divider { border-top: 1px solid #e5e5e5; margin: 6px 0; }
 
     /* ---- Leaflet overrides ---- */
-    .leaflet-top.leaflet-left {
-      top: 120px;
-      left: 9px;
-    }
-    .leaflet-interactive:focus {
-      outline: none;
-    }
-    .leaflet-marker-icon, .leaflet-interactive {
-      transition: opacity 0.15s ease-in-out;
-    }
+    .leaflet-top.leaflet-left { top: 120px; left: 9px; }
+    .leaflet-bottom.leaflet-right { right: var(--sidebar-width); }
+    .leaflet-interactive:focus { outline: none; }
     .leaflet-popup-content-wrapper {
       border-radius: 10px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
@@ -254,6 +246,19 @@
       line-height: 1.5;
       margin: 12px 14px;
     }
+    .popup-topic { font-weight: 600; font-size: 14px; }
+    .popup-new {
+      display: inline-block;
+      background: var(--new-case);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 0 6px;
+      margin-left: 4px;
+      vertical-align: 1px;
+    }
+    .popup-notes { margin-top: 6px; color: #555; max-height: 120px; overflow-y: auto; }
     .leaflet-tooltip {
       border-radius: 6px;
       border: none;
@@ -263,24 +268,52 @@
       padding: 6px 10px;
     }
 
+    /* ---- Phones: sidebar becomes a bottom panel ---- */
+    @media (max-width: 760px) {
+      :root { --sidebar-height: 38vh; }
+      #top-left { top: 12px; left: 12px; gap: 10px; }
+      #app-header { padding: 10px 14px; }
+      #app-header h1 { font-size: 20px; }
+      #app-header p { font-size: 13px; }
+      #info-btn { width: 40px; height: 40px; font-size: 17px; }
+      #sidebar {
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        height: var(--sidebar-height);
+        padding: 12px 16px;
+        border-radius: 14px 14px 0 0;
+        box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
+      }
+      #sidebar h3 { margin: 14px 0 6px; }
+      .filter-group { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; }
+      .filter-group label { font-size: 13px; padding: 4px 0; }
+      #legend { bottom: calc(var(--sidebar-height) + 10px); left: 12px; padding: 8px 10px; font-size: 11px; }
+      .leaflet-control-zoom { display: none; }
+      .leaflet-bottom.leaflet-right { right: 0; bottom: var(--sidebar-height); }
+    }
   </style>
 </head>
 <body>
-  <div id="app-header">
-    <h1>Boston 311</h1>
-    <p>Service request trends by neighborhood</p>
-   </div>
+  <div id="top-left">
+    <div id="app-header">
+      <h1>Boston 311</h1>
+      <p>Service request trends by neighborhood</p>
+      <div id="data-updated"></div>
+    </div>
+    <button id="info-btn" aria-label="About this map">i</button>
+  </div>
 
-  <button id="info-btn" aria-label="About this map">i</button>
-
-  <div id="info-panel" style="display: none;">
+  <div id="info-panel" style="display: none;" role="dialog" aria-labelledby="info-title">
     <button id="info-close" aria-label="Close">&times;</button>
-    <h3>About this map</h3>
+    <h3 id="info-title">About this map</h3>
     <ul>
       <li><strong>Zoom in</strong> on any neighborhood to see individual 311 cases reported there in the last 30 days.</li>
       <li>Click a neighborhood to zoom to it directly.</li>
-      <li>Data covers Boston 311 requests from 2011 to present, and updates automatically once per day.</li>
-      <li>Pins are colored <span style="color:#e74c3c">red</span> for open cases and <span style="color:#2ecc71">green</span> for closed cases.</li>
+      <li id="info-coverage">Data updates automatically once per day.</li>
+      <li>Pins are colored <span style="color:#e74c3c">red</span> for open cases and <span style="color:#2ecc71">green</span> for closed cases. Cases reported in the past day get a <span style="color:#d97706">gold</span> highlight.</li>
+      <li>Rates are cases per 1,000 residents. Bay Village and the Leather District aren't counted separately in population data, so they share a combined rate with the South End and Chinatown.</li>
+      <li>Source: <a href="https://data.boston.gov/dataset/311-service-requests" target="_blank" rel="noopener">Analyze Boston 311 Service Requests</a>.</li>
     </ul>
   </div>
   <div id="info-backdrop" style="display: none;"></div>
@@ -288,57 +321,43 @@
 
   <div id="loading-overlay">
     <div id="loading-spinner"></div>
-      <p>Loading map data…</p>
+    <p>Loading map data…</p>
   </div>
 
   <div id="legend"></div>
 
   <div id="sidebar">
     <div id="tabs">
-      <button class="tab-btn active" data-tab="cases-panel">Cases</button>
-      <button class="tab-btn" data-tab="response-time-panel">Response Time</button>
+      <button class="tab-btn active" data-tab="cases">Cases</button>
+      <button class="tab-btn" data-tab="response-time">Response Time</button>
     </div>
 
     <div id="cases-panel" class="tab-panel">
       <h3>Category</h3>
-      <div id="category-filters">
-        <label><input type="checkbox" value="Animals" class="category-cb"> Animals</label>
-        <label><input type="checkbox" value="Trash & Sanitation" class="category-cb"> Trash & Sanitation</label>
-        <label><input type="checkbox" value="Housing" class="category-cb"> Housing</label>
-        <label><input type="checkbox" value="Health & Safety" class="category-cb"> Health & Safety</label>
-        <label><input type="checkbox" value="Street Infrastructure" class="category-cb"> Street Infrastructure</label>
-        <label><input type="checkbox" value="Parks & Trees" class="category-cb"> Parks & Trees</label>
-        <label><input type="checkbox" value="Permits & Signage" class="category-cb"> Permits & Signage</label>
-        <label><input type="checkbox" value="Vehicles & Parking" class="category-cb"> Vehicles & Parking</label>
-        <label><input type="checkbox" value="Other" class="category-cb"> Other</label>
-      </div>
+      <div id="category-filters" class="filter-group"></div>
 
       <h3>Status</h3>
-      <div id="status-filter">
+      <div id="status-filter" class="filter-group">
         <label><input type="radio" name="status" value="" checked> All</label>
         <label><input type="radio" name="status" value="open"> Open</label>
         <label><input type="radio" name="status" value="closed"> Closed</label>
       </div>
     </div>
 
-
     <div id="response-time-panel" class="tab-panel" style="display: none;">
       <h3>Category</h3>
-      <div id="rt-category-filters">
-        <label><input type="checkbox" value="Animals" class="rt-category-cb"> Animals</label>
-        <label><input type="checkbox" value="Trash & Sanitation" class="rt-category-cb"> Trash & Sanitation</label>
-        <label><input type="checkbox" value="Housing" class="rt-category-cb"> Housing</label>
-        <label><input type="checkbox" value="Health & Safety" class="rt-category-cb"> Health & Safety</label>
-        <label><input type="checkbox" value="Street Infrastructure" class="rt-category-cb"> Street Infrastructure</label>
-        <label><input type="checkbox" value="Parks & Trees" class="rt-category-cb"> Parks & Trees</label>
-        <label><input type="checkbox" value="Permits & Signage" class="rt-category-cb"> Permits & Signage</label>
-        <label><input type="checkbox" value="Vehicles & Parking" class="rt-category-cb"> Vehicles & Parking</label>
-        <label><input type="checkbox" value="Other" class="rt-category-cb"> Other</label>
-      </div>
+      <div id="rt-category-filters" class="filter-group"></div>
     </div>
+
+    <h3>New cases</h3>
+    <div class="filter-group">
+      <label><input type="checkbox" id="highlight-new" autocomplete="off"> <span class="new-dot"></span> Show last 24 hours on full map</label>
+    </div>
+    <p class="filter-hint" id="new-count"></p>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
