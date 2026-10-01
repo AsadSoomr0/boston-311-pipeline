@@ -1,19 +1,58 @@
-name: Daily 311 Data Update
+name: Update data and deploy
 
 on:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: "0 8 * * *"   # daily, ~4am Boston time
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "daily = last 60 days, full = everything since DATA_START, build = no ingest"
+        type: choice
+        options: [daily, full, build]
+        default: daily
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "pipeline/**"
+      - ".github/workflows/daily-update.yml"
+
+concurrency:
+  group: update-and-deploy
+  cancel-in-progress: false
 
 jobs:
-  update-data:
+  update:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - run: pip install pandas psycopg2-binary sqlalchemy requests python-dotenv shapely
-      - run: python scripts/daily_update.py
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Ingest and build site data
+        run: |
+          MODE="${{ github.event.inputs.mode || 'daily' }}"
+          if [ "${{ github.event_name }}" = "push" ]; then MODE=build; fi
+          case "$MODE" in
+            full)  python -m pipeline.run --full ;;
+            build) python -m pipeline.run --skip-ingest ;;
+            *)     python -m pipeline.run ;;
+          esac
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Deploy to Netlify
         env:
-          NEON_DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli deploy --prod --dir=frontend --message "Data update ${{ github.run_id }}"

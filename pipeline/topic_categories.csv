@@ -1,0 +1,152 @@
+case_topic,umbrella_category
+Dead Animal General,Animals
+Domestic Animal Issue,Animals
+Lost Pet,Animals
+Park Dead Animal,Animals
+Wild Animal Issue,Animals
+Pigeon Infestation,Animals
+Bed Bugs,Health & Safety
+Fire in Food Establishment,Health & Safety
+Food Alert - Confirmed,Health & Safety
+Food Alert - Unconfirmed,Health & Safety
+Mice Infestation - Residential,Health & Safety
+Lead,Health & Safety
+Mosquitoes (West Nile),Health & Safety
+Needle Pickup,Health & Safety
+Pest Infestation - Residential,Health & Safety
+Rodent Activity,Health & Safety
+Rat Bite,Health & Safety
+Short Measure - Gas,Health & Safety
+Oil Truck - Short Measure,Health & Safety
+Water in Gas - High Priority,Health & Safety
+Unsafe Dangerous Conditions,Health & Safety
+Unsanitary Conditions - Employees,Health & Safety
+Unsanitary Conditions - Establishment,Health & Safety
+Unsanitary Conditions - Food,Health & Safety
+Boston Public Health Commission (BPHC),Health & Safety
+Abandoned Building,Housing
+Building Inspection Request,Housing
+Carbon Monoxide,Housing
+Chronic Dampness/Mold,Housing
+Cross Metering - Sub-Metering,Housing
+Egress,Housing
+Heat - Excessive Insufficient,Housing
+Illegal Occupancy,Housing
+Illegal Rooming House,Housing
+Maintenance - Homeowner,Housing
+Maintenance Complaint - Residential,Housing
+No Utilities Residential - Electricity,Housing
+No Utilities Residential - Gas,Housing
+No Utilities Residential - Water,Housing
+No Utilities - Food Establishment - Flood,Housing
+No Utilities - Food Establishment - Water,Housing
+No Utilities - Food Establishment - Electricity,Housing
+No Utilities - Food Establishment - Sewer,Housing
+Occupying W/Out A Valid CO/CI,Housing
+Rental Unit Delivery Conditions,Housing
+Poor Ventilation,Housing
+Protection of Adjoining Property,Housing
+Short Term Rental,Housing
+Squalid Living Conditions,Housing
+Unit Pricing Wrong/Missing,Housing
+Overcrowding,Housing
+Poor Conditions of Property,Housing
+Unsatisfactory Living Conditions,Housing
+Unsatisfactory Utilities - Electrical Plumbing,Housing
+Work w/out Permit,Housing
+Zoning,Housing
+Dropped Personal Item,Other
+Public Works General Request,Other
+Walk-In Service Inquiry,Other
+External referral,Other
+Item Price Missing,Other
+Scanning Overcharge,Other
+Phone Bank Service Inquiry,Other
+No Price on Gas/Wrong Price,Other
+Scale Not Visible,Other
+Product Short Measure,Other
+Oil Truck - No Price Per Gallon,Other
+Oil Truck - No Receipt,Other
+Other,Other
+PWD General,Other
+Ballfield Issue,Parks & Trees
+Broken Park Equipment,Parks & Trees
+Cemetery Maintenance,Parks & Trees
+Fallen Tree or Branches,Parks & Trees
+Locked Gates,Parks & Trees
+Overgrown Weeds,Parks & Trees
+Park Graffiti,Parks & Trees
+Park Groundskeeping,Parks & Trees
+Park Light Outage,Parks & Trees
+Park Litter & Debris,Parks & Trees
+Park Overflowing Trash Can,Parks & Trees
+Park Suggestions,Parks & Trees
+Parks General Request,Parks & Trees
+Planting Request,Parks & Trees
+Pruning Request,Parks & Trees
+Tree or Stump Removal,Parks & Trees
+Contractors Complaint,Permits & Signage
+Illegal Posting of Signs,Permits & Signage
+Electrical,Permits & Signage
+Exceeding Terms of Permit,Permits & Signage
+Illegal Yard Parking,Permits & Signage
+Mechanical,Permits & Signage
+Municipal Lots,Permits & Signage
+Plumbing,Permits & Signage
+Unauthorized Signage,Permits & Signage
+Unauthorized Vending,Permits & Signage
+Working Beyond Hours,Permits & Signage
+Abandoned Bicycle,Street Infrastructure
+Bicycle Issues,Street Infrastructure
+Bridge Maintenance,Street Infrastructure
+Emergency Responder Snow Plowing,Street Infrastructure
+Fences/Guardrails/Bollards,Street Infrastructure
+General Traffic Engineering Request,Street Infrastructure
+Illegally Blocked Sidewalk,Street Infrastructure
+Lane Divider,Street Infrastructure
+Missing Manhole Cover,Street Infrastructure
+Missing Sign,Street Infrastructure
+New Sign Crosswalk or Pavement Marking,Street Infrastructure
+News Boxes,Street Infrastructure
+Pavement Marking Inspection,Street Infrastructure
+Pothole,Street Infrastructure
+Requests for Directional or Roadway Changes,Street Infrastructure
+Requests for Traffic Signal Studies or Reviews,Street Infrastructure
+Sidewalk Repair,Street Infrastructure
+Sign Repair,Street Infrastructure
+Snow Plowing,Street Infrastructure
+Street Light Knockdown,Street Infrastructure
+Street Light Other,Street Infrastructure
+Street Light Outage,Street Infrastructure
+Traffic Signal Inspection,Street Infrastructure
+Traffic Signal Repair,Street Infrastructure
+Transportation General Request,Street Infrastructure
+Unshoveled Sidewalk,Street Infrastructure
+Utility Casting Repair,Street Infrastructure
+Utility Contractor Complaints,Street Infrastructure
+Missing / Knocked Down Sign,Street Infrastructure
+Roadway Repair,Street Infrastructure
+Broken Public Waste Receptacle,Trash & Sanitation
+Code Enforcement Collection,Trash & Sanitation
+Construction Debris,Trash & Sanitation
+Illegal Dumping or Disposal,Trash & Sanitation
+Illegal Graffiti,Trash & Sanitation
+Improper Trash Storage,Trash & Sanitation
+Litter & Debris,Trash & Sanitation
+Missed Waste Pick-up,Trash & Sanitation
+Sewage/Septic Back-Up,Trash & Sanitation
+Overflowing Trash,Trash & Sanitation
+Improper Storage of Trash (Barrels),Trash & Sanitation
+Request New Public Waste Receptacle,Trash & Sanitation
+Student Move-In (Trash Collection),Trash & Sanitation
+Overflowing or Un-kept Dumpster,Trash & Sanitation
+Sticker Request,Trash & Sanitation
+Trash Placed Out Early,Trash & Sanitation
+Trash on Vacant Lot,Trash & Sanitation
+Abandoned Vehicles,Vehicles & Parking
+Illegal Auto Body Shop,Vehicles & Parking
+Municipal Parking Lot Complaints,Vehicles & Parking
+Parking Enforcement,Vehicles & Parking
+Parking Meter Repairs,Vehicles & Parking
+Valet Parking Problems,Vehicles & Parking
+Private Parking Lot Complaints,Vehicles & Parking

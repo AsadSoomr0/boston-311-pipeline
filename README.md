@@ -1,76 +1,86 @@
 # Boston 311 Service Request Map
 
-An interactive map of Boston 311 service requests, showing neighborhood-level trends and response times. Built as an end-to-end data engineering project: live data ingestion, a normalized Postgres schema, a filtering API, and an interactive frontend.
+An interactive map of Boston 311 service requests showing where requests come from and how quickly the city closes them. Built as an end-to-end data engineering project: daily ingestion from two public APIs, a Postgres warehouse, a batch build step that pre-aggregates everything the site needs, and a static Leaflet frontend.
 
-**[Live site →](https://311-map-boston.netlify.app/)**
+**[Live site](https://311-map-boston.netlify.app/)**
 
 ## What it does
 
-- **Choropleth map** of Boston neighborhoods, color-coded by 311 requests per 1,000 residents (normalized by population rather than raw counts)
-- **Response Time tab** showing median response time by neighborhood and category, using the same map with a separate color scale
-- **Category and status filters** (Animals, Trash & Sanitation, Street Infrastructure, Parks & Trees, Permits & Signage, Other; Open/Closed/All)
-- **Zoom-in drill-down**: zooming into a neighborhood reveals individual cases reported in the last 30 days, color-coded red (open) or green (closed), with full case details on click
-- **Live daily updates**: the underlying data refreshes automatically once a day from Boston's open data portal
+- **Choropleth of Boston neighborhoods**, colored by 311 requests per 1,000 residents (normalized with BPDA population estimates so big neighborhoods don't win by default)
+- **Response Time tab**: median hours from open to close, for any combination of categories
+- **Filters** for 9 umbrella categories (Animals, Trash & Sanitation, Housing, Health & Safety, Street Infrastructure, Parks & Trees, Permits & Signage, Vehicles & Parking, Other) and open/closed status
+- **Drill-down**: zoom into a neighborhood to see every case from the last 30 days, red for open and green for closed, with details on click
+- **New cases**: anything reported in the 24 hours before the latest update is highlighted in gold
+- **Daily updates** from Analyze Boston, deployed automatically
 
 ## Architecture
 
 ```
-Analyze Boston (CKAN API)
-        │
-        ▼
-GitHub Actions (daily cron)  ──▶  Neon (Postgres)  ◀──  Render (FastAPI)
-                                                              │
-                                                              ▼
-                                                    Netlify (static frontend)
+Analyze Boston CKAN API ──▶ pipeline/ (GitHub Actions, daily) ──▶ Neon Postgres
+  new system + legacy feeds        │   extract → transform → upsert
+                                   │
+                                   └─ build ──▶ frontend/data/*.json ──▶ Netlify (static)
 ```
 
-- **Data source**: [Analyze Boston's 311 Service Requests dataset](https://data.boston.gov/dataset/311-service-requests), queried via the CKAN Datastore API
-- **Database**: PostgreSQL, hosted on [Neon](https://neon.tech). Three tables: `cases` (the 311 requests), `topic_categories` (a lookup mapping the ~55 raw case topics into 6 broader umbrella categories), and `neighborhood_population` (BPDA population estimates, used to normalize the choropleth)
-- **Backend**: FastAPI, hosted on [Render](https://render.com), serving filtered/aggregated queries over the Postgres data
-- **Frontend**: Vanilla HTML/JS/CSS with [Leaflet.js](https://leafletjs.com/), hosted on [Netlify](https://netlify.com)
-- **Orchestration**: An [Apache Airflow](https://airflow.apache.org/) DAG (`dags/update_311_data.py`) defines the incremental daily ingestion pipeline — fetch new/updated cases since the last run, transform, and upsert. In production, the same logic runs via a scheduled [GitHub Actions workflow](.github/workflows/daily-update.yml) rather than a hosted Airflow deployment.
+The site is fully static. Instead of a live API, the pipeline's build step queries Postgres once a day and writes three small JSON files:
+
+| File | Contents |
+|---|---|
+| `meta.json` | coverage dates, categories, neighborhood populations, topics missing from the category mapping |
+| `neighborhood_stats.json` | open/closed counts per neighborhood × category, and median response time for every one of the 511 category combinations |
+| `recent_cases.json` | the last 30 days of cases in a compact columnar format, loaded in the background for the drill-down |
+
+All filtering happens in the browser, so the map responds instantly and there's no server to wake up or keep running.
+
+**Why this design**: the data changes once a day, so a request-time API was doing the same aggregations thousands of times between updates and added a cold-start delay on free hosting. Precomputing is cheaper, faster, and removes a moving part. Postgres stays as the system of record and for ad hoc SQL.
+
+### Pipeline (`pipeline/`)
+
+- **Extract**: Boston is mid-migration between two 311 systems, so cases are split across two datastore resources (the new `BCS-` system and the legacy 2026 export). Both are paged through the CKAN SQL API.
+- **Transform**: legacy columns are mapped onto the new schema, legacy timestamps (Boston local time) are converted to UTC, ward and precinct codes are normalized, City Hall placeholder coordinates are dropped, and neighborhoods that don't match the map (e.g. "South Boston / South Boston Waterfront") are re-resolved by point-in-polygon against the same GeoJSON the map draws.
+- **Load**: batched `INSERT ... ON CONFLICT (case_id) DO UPDATE`. Daily runs re-pull the last 60 days so cases that close later get updated; Sunday runs re-sync everything since `DATA_START`.
+- **Reference data**: `pipeline/topic_categories.csv` maps ~120 raw case topics to umbrella categories. It's version-controlled and mirrored into Postgres each run. New topics show up as "Other" and are listed in the run log and `meta.json` until they're added.
+
+The same package runs from GitHub Actions in production and from an Airflow DAG locally (`dags/update_311_data.py`), so there's one implementation.
 
 ## Local development
 
-**Requirements**: Docker Desktop, Python 3.
+Requirements: Python 3.10+, and either a Postgres connection string in `.env` (`DATABASE_URL=...`) or the Docker stack.
 
 ```bash
-# Start Postgres, Airflow (webserver + scheduler), and their metadata DB
-docker compose up -d
+pip install -r requirements.txt
 
-# Load the initial dataset and reference tables
-python scripts/load_data.py
+# First time only: create the cases table and load everything since DATA_START
+python -m pipeline.run --rebuild
 
-# Run the API
-uvicorn api.main:app --reload
+# Day to day
+python -m pipeline.run                # ingest last 60 days + build
+python -m pipeline.run --skip-ingest  # just rebuild frontend/data from Postgres
 
-# Serve the frontend
+# Serve the site
 cd frontend && python -m http.server 5500
 ```
 
-Airflow UI: `http://localhost:8080` (default login `admin` / `admin`)
-API: `http://localhost:8000`
-Frontend: `http://localhost:5500`
+Airflow (optional): `docker compose up -d`, then `http://localhost:8080`.
 
 ## Project structure
 
 ```
-api/                FastAPI backend
-dags/               Airflow DAG (reference implementation)
-frontend/           Static HTML/JS/CSS map
-scripts/
-  load_data.py      One-time initial data load + reference table setup
-  daily_update.py   Standalone incremental update script (used by GitHub Actions)
-.github/workflows/  Scheduled GitHub Actions workflow
-docker-compose.yml  Local Postgres + Airflow stack
+pipeline/            extract, transform, load, build, run (CLI)
+  topic_categories.csv
+dags/                Airflow DAG wrapping the same pipeline
+frontend/            static site (index.html, app.js, config.js, GeoJSON)
+  data/              generated by the build step, not committed
+.github/workflows/   daily ingest + build + Netlify deploy
+docker-compose.yml   local Postgres + Airflow
 ```
 
 ## Known limitations
 
-- **Boston 311 backend transition**: as of late 2025/2026, Boston's 311 system is mid-migration to a new backend, with some case types split across a legacy dataset and a differently-structured "new system" dataset. This project currently ingests only the legacy dataset. The city has also acknowledged a bug where some 2026 case types are being dropped from the legacy export during the transition.
-- **Free-tier hosting**: the backend (Render) spins down after ~15 minutes of inactivity. The first request after a period of inactivity can take 30-60 seconds while it wakes up; the frontend shows a loading indicator during this window.
-- **Two neighborhoods' population figures are approximated**: Bay Village and the Leather District aren't broken out separately in the population dataset used, so their per-capita rates borrow South End's and Chinatown's population figures, respectively (their neighboring, most closely associated areas).
+- **Source data in transition**: the city has acknowledged that some 2026 case types were dropped from the legacy export during the migration. Ingesting both feeds covers most of the gap, but counts depend on what the city publishes.
+- **Combined rates**: Bay Village and the Leather District aren't broken out in the population data, so they share a combined rate with the South End and Chinatown.
+- **Basemap**: CARTO's tiles now need an API key. The site uses Esri's keyless light gray basemap unless a CARTO key is set in `frontend/config.js`.
 
 ## Tech stack
 
-Python, FastAPI, SQLAlchemy, PostgreSQL, Apache Airflow, Pandas, Leaflet.js, Docker, GitHub Actions
+Python, Pandas, PostgreSQL (Neon), SQLAlchemy, Shapely, Apache Airflow, GitHub Actions, Leaflet.js, Netlify, Docker
